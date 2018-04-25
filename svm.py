@@ -60,8 +60,10 @@ class BinarySVM:
         gram_matrix = gram_matrix[idx_support]
         gram_matrix = gram_matrix[:, idx_support]
 
-        self._b = (self._labels[0]
-                   - np.sum((self._labels * self._lagrange).T * gram_matrix[0]))
+        self._b = np.sum(self._labels
+                         - (np.dot((self._labels * self._lagrange).T,
+                                   gram_matrix)))
+        self._b /= n_support_v
 
     def predict(self, x):
         if self._lagrange is None:
