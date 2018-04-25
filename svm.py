@@ -8,6 +8,7 @@ class BinarySVM:
         self._C = C
         self._lagrange = None
         self._labels = None
+        self._labels_list = None
         self._b = None
 
         if kernel == 'rbf':
@@ -18,11 +19,19 @@ class BinarySVM:
             raise ValueError('Unknown kernel')
 
     def fit(self, x, labels):
-        gram_matrix = self._kernel(x, x, self._param)
-        print("gram: \n", gram_matrix[0:2, 0:2])
-        print(x[0:2, :])
-        print(gram_matrix.shape)
+        self._labels_list = np.unique(labels)
         self._labels = labels
+
+        if len(self._labels_list) != 2:
+            raise ValueError('Not enough class')
+
+        idx_c1 = labels == self._labels_list[0]
+        idx_c2 = labels == self._labels_list[1]
+
+        self._labels[idx_c1] = 1
+        self._labels[idx_c2] = -1
+
+        gram_matrix = self._kernel(x, x, self._param)
 
         n_samples, n_features = x.shape
         P = cvxopt.matrix(np.outer(labels, labels) * gram_matrix)
@@ -42,12 +51,10 @@ class BinarySVM:
         G = cvxopt.matrix(G)
         h = cvxopt.matrix(h)
 
-        cvxopt.solvers.options['abstol']= 1e-20
+        cvxopt.solvers.options['abstol']= 1e-25
 
         self._lagrange = cvxopt.solvers.qp(P, q, G, h, A, b)
         self._lagrange = np.array(self._lagrange['x']).reshape(n_samples)
-
-        print("lagrange", np.max(self._lagrange))
 
         epsilon = np.max(self._lagrange / 100)
         idx_support = self._lagrange > epsilon
@@ -68,13 +75,24 @@ class BinarySVM:
     def predict(self, x):
         if self._lagrange is None:
             raise ValueError('Model not trained')
+
         gram_matrix = self._kernel(x, self._support_v, self._param)
         prediction = self._lagrange * self._labels * gram_matrix
-        prediction = np.sum(prediction, axis=1)+ self._b
+        prediction = np.sum(prediction, axis=1) + self._b
 
         prediction = np.sign(prediction)
 
+        idx_c1 = prediction == 1
+        idx_c2 = prediction == -1
+
+        prediction[idx_c1] = self._labels_list[0]
+        prediction[idx_c2] = self._labels_list[1]
         return prediction
+
+    def score(self, x, labels):
+        prediction = self.predict(x)
+
+        return np.sum(prediction == labels) / len(labels)
 
     @staticmethod
     def RBF(x, y, gamma):
