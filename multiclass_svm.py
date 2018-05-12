@@ -2,9 +2,10 @@ from svm import BinarySVM
 import numpy as np
 
 class MulticlassSVM():
-    def __init__(self, kernel, param, C=None):
+    def __init__(self, kernel, degree=3, gamma=0.001, C=None):
         self._kernel = kernel
-        self._param = param
+        self._degree = degree
+        self._gamma = gamma
         self._C = C
         self._svm = None
 
@@ -16,8 +17,9 @@ class MulticlassSVM():
         n_svm = int(self._n_labels * (self._n_labels - 1) / 2)
 
         self._svm = np.array([BinarySVM(self._kernel,
-                                        self._param,
-                                        self._C) for _ in range(n_svm)])
+                                        degree=self._degree,
+                                        gamma=self._gamma,
+                                        C=self._C) for _ in range(n_svm)])
 
         count = 0
         for i in range(self._n_labels):

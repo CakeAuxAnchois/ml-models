@@ -3,8 +3,9 @@ import cvxopt
 
 class BinarySVM:
 
-    def __init__(self, kernel, param, C=None):
-        self._param = param
+    def __init__(self, kernel, C=None, degree=3, gamma=0.001):
+        self._degree = degree
+        self._gamma = gamma
         self._C = C
         self._lagrange = None
         self._labels = None
@@ -12,9 +13,9 @@ class BinarySVM:
         self._b = None
 
         if kernel == 'rbf':
-            self._kernel = self.RBF
+            self._kernel = self.RBF(gamma)
         elif kernel == 'poly':
-            self._kernel = self.poly
+            self._kernel = self.poly(degree)
         else:
             raise ValueError('Unknown kernel')
 
@@ -23,7 +24,7 @@ class BinarySVM:
         self._labels = labels
 
         if len(self._labels_list) != 2:
-            raise ValueError('Not enough class')
+            raise ValueError('Binary SVM must receive exactly 2 classes')
 
         idx_c1 = labels == self._labels_list[0]
         idx_c2 = labels == self._labels_list[1]
@@ -31,7 +32,7 @@ class BinarySVM:
         self._labels[idx_c1] = 1
         self._labels[idx_c2] = -1
 
-        gram_matrix = self._kernel(x, x, self._param)
+        gram_matrix = self._kernel(x, x)
 
         n_samples, n_features = x.shape
         P = cvxopt.matrix(np.outer(labels, labels) * gram_matrix)
@@ -76,7 +77,7 @@ class BinarySVM:
         if self._lagrange is None:
             raise ValueError('Model not trained')
 
-        gram_matrix = self._kernel(x, self._support_v, self._param)
+        gram_matrix = self._kernel(x, self._support_v)
         prediction = self._lagrange * self._labels * gram_matrix
         prediction = np.sum(prediction, axis=1) + self._b
 
@@ -94,17 +95,23 @@ class BinarySVM:
 
         return np.sum(prediction == labels) / len(labels)
 
-    @staticmethod
-    def RBF(x, y, gamma):
-        gram_matrix = -2 * np.dot(x, y.T)
-        norm_sqrd_x = np.sum(x ** 2, axis=1)
-        norm_sqrd_y = np.sum(y ** 2, axis=1)
-        gram_matrix += norm_sqrd_x.reshape(-1, 1) + norm_sqrd_y.reshape(1, -1)
-
-        gram_matrix = np.exp(-gamma * gram_matrix)
-
-        return gram_matrix
+    # Matrix implementations of kernel functions
 
     @staticmethod
-    def poly(x, y, d):
-        return (np.dot(x, y.T) + 1) ** d
+    def RBF(gamma):
+        def f(x, y):
+            gram_matrix = -2 * np.dot(x, y.T)
+            norm_sqrd_x = np.sum(x ** 2, axis=1)
+            norm_sqrd_y = np.sum(y ** 2, axis=1)
+            gram_matrix += norm_sqrd_x.reshape(-1, 1) + norm_sqrd_y.reshape(1, -1)
+
+            gram_matrix = np.exp(-gamma * gram_matrix)
+
+            return gram_matrix
+        return f
+
+    @staticmethod
+    def poly(degree):
+        def f(x, y):
+            return (np.dot(x, y.T) + 1) ** d
+        return f
