@@ -53,6 +53,7 @@ class BinarySVM:
         h = cvxopt.matrix(h)
 
         cvxopt.solvers.options['abstol']= 1e-25
+        cvxopt.solvers.options['show_progress']= False
 
         self._lagrange = cvxopt.solvers.qp(P, q, G, h, A, b)
         self._lagrange = np.array(self._lagrange['x']).reshape(n_samples)

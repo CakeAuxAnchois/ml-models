@@ -1,4 +1,4 @@
-from svm import BinarySVM
+from models.svm import BinarySVM
 import numpy as np
 
 class MulticlassSVM():
@@ -54,3 +54,9 @@ class MulticlassSVM():
 
         prediction = np.argmax(prediction, axis=1)
         return prediction
+
+    def score(self, x, test_labels):
+        out = self.predict(x, test_labels)
+        accuracy = np.sum(out == test_labels) / len(test_labels)
+
+        return accuracy
